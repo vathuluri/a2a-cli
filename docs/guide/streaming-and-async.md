@@ -28,7 +28,7 @@ History:
 [status] completed
 ```
 
-The first event is the task, then status updates and artifacts as they happen. A status message prints its text parts. Its data parts, like the tool call the agent runs, are in `-o json`; a message with only data parts prints them as JSON. Chunks the agent appends to an artifact continue the same `[artifact]` line.
+The first event is the task, then status updates and artifacts as they happen. A status message prints its text parts. Its data parts, like the tool call the agent runs, are in `-o json`; a message without nonblank text keeps its data parts as JSON. Chunks the agent appends to an artifact continue the same `[artifact]` line.
 
 If the agent doesn't stream, `--stream` sends the message, polls the task every `--poll-interval` (default `2s`) and prints the same kinds of events.
 

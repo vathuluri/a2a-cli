@@ -382,9 +382,11 @@ func MessageText(msg *a2a.Message) string {
 }
 
 // messageDisplayText renders a message for text output. When the message has
-// text, its data parts are left out: -o json shows them.
+// nonblank text, its data parts are left out: -o json shows them.
 func messageDisplayText(msg *a2a.Message) string {
-	if !slices.ContainsFunc(msg.Parts, isText) {
+	if !slices.ContainsFunc(msg.Parts, func(part *a2a.Part) bool {
+		return strings.TrimSpace(part.Text()) != ""
+	}) {
 		return MessageText(msg)
 	}
 	return partsText(slices.DeleteFunc(slices.Clone(msg.Parts), isData))

@@ -17,6 +17,7 @@ package output
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -252,6 +253,11 @@ func TestPrintEventTextOutputDataParts(t *testing.T) {
 			event: agentMessage(a2a.NewDataPart(map[string]any{"total": 3})),
 			want:  "[agent] {\"total\":3}\n",
 		},
+		{
+			name:  "blank text keeps file and data parts",
+			event: agentMessage(a2a.NewTextPart(""), &a2a.Part{Content: a2a.URL("https://example.com/r.pdf")}, schema),
+			want:  "[agent]  file: (https://example.com/r.pdf) {\"type\":\"object\"}\n",
+		},
 	}
 
 	for _, tt := range tests {
@@ -266,6 +272,32 @@ func TestPrintEventTextOutputDataParts(t *testing.T) {
 				t.Fatalf("Printer.PrintEvent() wrong result (-want +got) diff = %s", diff)
 			}
 		})
+	}
+}
+
+func TestPrintEventBlankTextPreservesData(t *testing.T) {
+	t.Parallel()
+	for _, text := range []string{"", " \t\n", "\u00a0\u2003"} {
+		message := &a2a.Message{Role: a2a.MessageRoleAgent, Parts: a2a.ContentParts{
+			a2a.NewTextPart(text), a2a.NewDataPart(map[string]any{"forecast_count": 3}),
+		}}
+		for _, event := range []a2a.Event{
+			message,
+			&a2a.Task{ID: "task-1", Status: a2a.TaskStatus{State: a2a.TaskStateCompleted, Message: message}},
+			&a2a.Task{ID: "task-1", Status: a2a.TaskStatus{State: a2a.TaskStateCompleted}, History: []*a2a.Message{message}},
+			&a2a.TaskStatusUpdateEvent{Status: a2a.TaskStatus{State: a2a.TaskStateCompleted, Message: message}},
+		} {
+			t.Run(fmt.Sprintf("%T/%q", event, text), func(t *testing.T) {
+				t.Parallel()
+				var out bytes.Buffer
+				if err := NewPrinter(&out, ModeText).PrintEvent(event); err != nil {
+					t.Fatalf("Printer.PrintEvent() error = %v, want nil", err)
+				}
+				if !strings.Contains(out.String(), `{"forecast_count":3}`) {
+					t.Fatalf("Printer.PrintEvent() = %q, want structured data preserved", out.String())
+				}
+			})
+		}
 	}
 }
 
